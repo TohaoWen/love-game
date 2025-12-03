@@ -3,303 +3,295 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>心动挑战：给最爱的人 ❤️</title> 
+    <title>✨ 爱心气泡消除 ✨</title>
     <style>
-        body { 
-            margin: 0; 
-            padding: 0; 
-            overflow: hidden; 
-            font-family: "Microsoft YaHei", sans-serif; 
-            touch-action: none; 
-            /* 渐变背景 */
-            background: linear-gradient(135deg, #ffdee9 0%, #b5fffc 100%);
+        /* 全局样式 */
+        body {
+            margin: 0; padding: 0;
+            overflow: hidden;
+            background: linear-gradient(120deg, #f0f8ff 0%, #ffc0cb 100%); /* 渐变粉蓝背景 */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: 'Arial', sans-serif;
             color: #333;
         }
-        #gameCanvas { display: block; margin: 0 auto; background: rgba(255, 255, 255, 0.3); }
-        
-        /* 界面UI样式 */
-        .ui-layer { 
-            position: absolute; 
-            top: 0; left: 0; 
-            width: 100%; height: 100%; 
-            pointer-events: none; 
-            display: flex; 
-            flex-direction: column; 
-            justify-content: center; 
-            align-items: center; 
-            z-index: 10;
+
+        /* 游戏板和卡片 */
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr); /* 8x8 网格 */
+            gap: 2px;
+            padding: 5px;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(255, 105, 180, 0.4);
+            width: 95vw;
+            max-width: 400px; /* 限制最大宽度，保证手机端体验 */
         }
         
-        /* 顶部信息栏 */
-        .info-bar { 
-            position: absolute; 
-            top: 15px; 
-            width: 95%;
+        .cell {
+            width: 100%;
+            padding-top: 100%; /* 正方形 */
+            position: relative;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0; /* 默认隐藏emoji，等待JS渲染 */
+            transition: transform 0.1s ease, opacity 0.3s ease;
+            user-select: none;
+            border-radius: 4px;
+        }
+
+        .cell .emoji {
+            position: absolute;
+            font-size: 30px;
+            transform: scale(1);
+            transition: transform 0.2s ease;
+        }
+
+        .cell:active .emoji {
+            transform: scale(0.9);
+        }
+
+        /* 顶部 UI 区域 */
+        #ui-top {
+            width: 95vw;
+            max-width: 400px;
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            padding: 0 10px;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            font-weight: bold;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
 
-        .score-board, .lives-board { 
-            font-size: 20px; 
-            font-weight: bold; 
-            color: #880e4f; 
-            background: rgba(255,255,255,0.9); 
-            padding: 5px 15px; 
-            border-radius: 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
+        .score-display { color: #ff69b4; }
+        .moves-display { color: #4b0082; }
 
-        /* 弹窗样式 */
-        #startScreen, #gameOverScreen, #winScreen { 
-            background: rgba(255, 255, 255, 0.95); 
-            padding: 30px 40px; 
-            border-radius: 20px; 
-            text-align: center; 
-            box-shadow: 0 10px 40px rgba(255, 105, 180, 0.5); 
-            pointer-events: auto;
-            max-width: 90%;
-            border: 3px solid #ff6b81;
+        /* 弹窗样式 (沿用之前的浪漫风格) */
+        .modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7); display: flex;
+            align-items: center; justify-content: center; z-index: 100;
         }
-        
-        h1 { color: #ff3366; margin-bottom: 10px; font-size: 28px; }
-        p { color: #666; font-size: 18px; line-height: 1.5; }
-        
-        .btn { 
-            background: linear-gradient(45deg, #ff6b81, #ff4757); 
-            color: white; 
-            border: none; 
-            padding: 12px 30px; 
-            font-size: 18px; 
-            border-radius: 50px; 
-            margin-top: 20px; 
-            cursor: pointer; 
-            box-shadow: 0 5px 15px rgba(255, 71, 87, 0.4);
-            transition: transform 0.1s;
+        .modal-content {
+            background: #fff; padding: 30px; border-radius: 20px;
+            text-align: center; box-shadow: 0 0 50px rgba(255, 64, 129, 0.8);
+            max-width: 80%; border: 3px solid #ff4081;
         }
-        .btn:active { transform: scale(0.95); }
-        
+        .btn {
+            background: linear-gradient(45deg, #ff4081, #ff80ab); color: white;
+            border: none; padding: 10px 25px; font-size: 1.1em;
+            border-radius: 50px; margin-top: 20px; cursor: pointer;
+        }
         .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-    <canvas id="gameCanvas"></canvas>
-
-    <div class="info-bar">
-        <div class="score-board">爱意值: <span id="scoreVal">0</span></div>
-        <div class="lives-board">生命值: <span id="livesVal">❤️❤️❤️</span></div>
+    <div id="ui-top">
+        <div class="score-display">分数: <span id="score">0</span></div>
+        <div class="moves-display">步数: <span id="moves">0</span> / <span id="max-moves">20</span></div>
     </div>
 
-    <div id="startScreen" class="ui-layer">
-        <div>
-            <h1>心动挑战：给最可爱的你 ❤️</h1>
-            <p>💖 目标：集满 520 分！</p>
-            <p>💧 警告：接到坏运气会扣分且损失生命。</p>
-            <p>🕹️ 操作：点击屏幕左右滑动小篮子。</p>
-            <button class="btn" onclick="startGame()">开始挑战</button>
+    <div id="game-board">
+        </div>
+
+    <div id="start-modal" class="modal">
+        <div class="modal-content">
+            <h1>消除烦恼，接住爱意！</h1>
+            <p>请点击消除相邻的相同气泡。</p>
+            <p>消除越多，得分越高！目标：达到 1000 分！</p>
+            <button class="btn" onclick="startGame()">开始消除</button>
         </div>
     </div>
 
-    <div id="winScreen" class="ui-layer hidden">
-        <div>
-            <h1>🎉 你太棒了！我们胜利了! 🎉</h1>
-            <p>你的爱意值已经爆表！<br>我为你骄傲！😘</p>
-            <p style="font-size: 40px; margin: 15px;">💖</p>
+    <div id="win-modal" class="modal hidden">
+        <div class="modal-content">
+            <h1>🎉 恭喜你，消除大师！🎉</h1>
+            <p>你在 <span id="final-moves"></span> 步内达到了 <span id="final-score"></span> 分！</p>
+            <p style="font-size: 20px; color:#ff4081;">
+                （这里写一句私人定制的甜言蜜语：你把所有的烦恼都消除了！只剩下爱！）
+            </p>
             <button class="btn" onclick="location.reload()">再玩一次</button>
         </div>
     </div>
 
-    <div id="gameOverScreen" class="ui-layer hidden">
-        <div>
-            <h1>💔 挑战失败</h1>
-            <p>不小心被坏运气击败了...<br>再试一次，把所有爱意接住！</p>
-            <button class="btn" onclick="resetGame()">重新开始</button>
+    <div id="lose-modal" class="modal hidden">
+        <div class="modal-content">
+            <h1>💔 步数用尽，下次再战！</h1>
+            <p>再多一点点策略就可以成功了！</p>
+            <button class="btn" onclick="location.reload()">再玩一次</button>
         </div>
     </div>
 
     <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        
-        let w, h;
-        function resize() {
-            w = canvas.width = window.innerWidth;
-            h = canvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resize);
-        resize();
+        const gameBoard = document.getElementById('game-board');
+        const scoreDisplay = document.getElementById('score');
+        const movesDisplay = document.getElementById('moves');
+        const maxMovesDisplay = document.getElementById('max-moves');
+        const startModal = document.getElementById('start-modal');
+        const winModal = document.getElementById('win-modal');
+        const loseModal = document.getElementById('lose-modal');
 
         // --- 游戏配置 ---
-        const CONFIG = {
-            winScore: 520,     // 获胜分数
-            maxLives: 3,       // 初始生命值
-            baseSpeed: 2,      // 基础速度
-            speedMultiplier: 0.005, // 动态加速因子
-        };
-
+        const GRID_SIZE = 8;        // 8x8 网格
+        const MAX_MOVES = 20;       // 最大步数
+        const TARGET_SCORE = 1000;  // 获胜分数
+        
+        // 可消除的元素 (5 种类型)
+        const EMOJIS = ['❤️', '✨', '💋', '🌟', '💖']; 
+        
         // --- 游戏状态 ---
-        let state = {
-            score: 0,
-            lives: CONFIG.maxLives,
-            running: false,
-            items: [],
-            player: { x: w/2, y: h - 100, size: 60 } // 玩家 (小篮子)
-        };
+        let grid = [];
+        let score = 0;
+        let moves = 0;
+        let isGameActive = false;
 
-        // --- 道具定义 ---
-        const ITEM_TYPES = [
-            { type: 'GOOD', emoji: '❤️', score: 10, speed: 1.5, size: 35 },
-            { type: 'GOOD', emoji: '🌟', score: 15, speed: 1.8, size: 30 },
-            { type: 'BAD', emoji: '💧', score: -30, speed: 2.2, size: 35 } // 负面情绪
-        ];
+        // --- 核心逻辑：深度优先搜索 (DFS) 查找相邻组 ---
+        function findGroup(r, c, type, group, visited) {
+            if (r < 0 || r >= GRID_SIZE || c < 0 || c >= GRID_SIZE) return;
+            if (visited[r][c] || grid[r][c] !== type) return;
 
-        // 玩家贴图（小篮子）
-        const PLAYER_EMOJI = "🧺"; 
+            visited[r][c] = true;
+            group.push({r, c});
 
-        // 核心循环
-        function loop() {
-            if (!state.running) return;
-            
-            ctx.clearRect(0, 0, w, h);
-            
-            // 1. 动态难度计算
-            // 随着分数增加，难度系数越高 (baseSpeed + score * multiplier)
-            let difficultyFactor = 1 + state.score * CONFIG.speedMultiplier; 
+            // 检查上下左右四个邻居
+            findGroup(r + 1, c, type, group, visited);
+            findGroup(r - 1, c, type, group, visited);
+            findGroup(r, c + 1, type, group, visited);
+            findGroup(r, c - 1, type, group, group); 
+            // 注意：这里最后一个参数 group 应为 visited，但为了简化，我们仅在主函数中传递 group
+        }
+        
+        // 修正后的 DFS (使用独立的 visited 数组)
+        function findGroupDFS(r, c, type, group, visited) {
+             if (r < 0 || r >= GRID_SIZE || c < 0 || c >= GRID_SIZE) return;
+             if (visited[r][c] || grid[r][c] !== type) return;
+             
+             visited[r][c] = true;
+             group.push({r, c});
+             
+             // 检查上下左右
+             findGroupDFS(r + 1, c, type, group, visited);
+             findGroupDFS(r - 1, c, type, group, visited);
+             findGroupDFS(r, c + 1, type, group, visited);
+             findGroupDFS(r, c - 1, type, group, visited);
+        }
 
-            // 2. 道具生成 (基于难度系数调整频率)
-            if (Math.random() * 100 < 6 * difficultyFactor) { 
-                // 增加生成频率
-                const itemDef = ITEM_TYPES[Math.floor(Math.random() * ITEM_TYPES.length)];
-                spawnItem(itemDef, difficultyFactor);
-            }
+        // --- 游戏流程函数 ---
 
-            // 3. 更新所有掉落物
-            for (let i = 0; i < state.items.length; i++) {
-                let item = state.items[i];
-                item.y += item.speed * difficultyFactor;
-                
-                // 绘制掉落物
-                ctx.font = `${item.size}px Arial`;
-                ctx.textAlign = "center";
-                ctx.fillText(item.emoji, item.x, item.y);
+        function initializeGrid() {
+            grid = Array(GRID_SIZE).fill(0).map(() => 
+                Array(GRID_SIZE).fill(0).map(() => getRandomEmoji())
+            );
+        }
+        
+        function getRandomEmoji() {
+            return EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
+        }
 
-                // 碰撞检测
-                let dx = item.x - state.player.x;
-                let dy = item.y - state.player.y; 
-                let distance = Math.sqrt(dx*dx + dy*dy);
+        function renderBoard() {
+            gameBoard.innerHTML = '';
+            gameBoard.style.gridTemplateColumns = `repeat(${GRID_SIZE}, 1fr)`;
 
-                if (distance < 50) { // 玩家接住了
-                    handleCollision(item);
-                    state.items.splice(i, 1);
-                    i--;
-                } else if (item.y > h) { // 掉出屏幕
-                    handleMiss(item);
-                    state.items.splice(i, 1);
-                    i--;
+            for (let r = 0; r < GRID_SIZE; r++) {
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+                    cell.innerHTML = `<span class="emoji">${grid[r][c]}</span>`;
+                    cell.onclick = () => handleCellClick(r, c);
+                    gameBoard.appendChild(cell);
                 }
             }
-
-            // 4. 绘制玩家
-            ctx.font = `${state.player.size}px Arial`;
-            ctx.textAlign = "center";
-            ctx.fillText(PLAYER_EMOJI, state.player.x, state.player.y);
-
-            requestAnimationFrame(loop);
         }
 
-        // --- 游戏逻辑函数 ---
-        
-        function handleCollision(item) {
-            state.score += item.score;
-            if(state.score < 0) state.score = 0; // 分数不能为负
-            document.getElementById('scoreVal').innerText = state.score;
+        function handleCellClick(r, c) {
+            if (!isGameActive) return;
 
-            if (item.type === 'BAD') {
-                // 接到负面情绪：扣除生命
-                state.lives -= 1;
-                updateLivesDisplay();
+            const clickedType = grid[r][c];
+            const group = [];
+            const visited = Array(GRID_SIZE).fill(0).map(() => Array(GRID_SIZE).fill(false));
+            
+            // 查找相邻组
+            findGroupDFS(r, c, clickedType, group, visited);
+            
+            // 只有找到 2 个或更多相邻元素时才进行消除
+            if (group.length >= 2) {
+                moves++;
+                
+                // 1. 消除与计分 (消除越多，分数增长越快：N * N * 10)
+                const scoreGained = group.length * group.length * 10;
+                score += scoreGained;
+
+                // 2. 移除元素并填充
+                group.forEach(({r, c}) => {
+                    grid[r][c] = getRandomEmoji(); // 简单填充
+                });
+                
+                // 3. 更新界面
+                updateDisplay();
+                
+                // 4. 检查游戏状态
+                checkGameStatus();
             }
-
-            checkStatus();
-        }
-        
-        function handleMiss(item) {
-            if (item.type === 'GOOD') {
-                // 漏接爱心：扣除生命
-                state.lives -= 1;
-                updateLivesDisplay();
-            }
-            checkStatus();
         }
 
-        function spawnItem(itemDef, factor) {
-            state.items.push({
-                type: itemDef.type,
-                emoji: itemDef.emoji,
-                score: itemDef.score,
-                size: itemDef.size,
-                x: Math.random() * (w - 60) + 30,
-                y: -30,
-                speed: itemDef.speed * factor + CONFIG.baseSpeed
+        function updateDisplay() {
+            scoreDisplay.textContent = score;
+            movesDisplay.textContent = moves;
+            
+            // 重新渲染，用简单填充替换复杂动画
+            document.querySelectorAll('.cell').forEach(cell => {
+                const r = parseInt(cell.dataset.row);
+                const c = parseInt(cell.dataset.col);
+                cell.querySelector('.emoji').textContent = grid[r][c];
             });
         }
         
-        function updateLivesDisplay() {
-            const livesDiv = document.getElementById('livesVal');
-            livesDiv.innerHTML = '❤️'.repeat(state.lives);
-            if(state.lives <= 1) {
-                livesDiv.style.color = 'red'; // 危险提示
-            } else {
-                livesDiv.style.color = '#880e4f';
-            }
-        }
-
-        function checkStatus() {
-            if (state.score >= CONFIG.winScore) {
-                state.running = false;
-                document.getElementById('winScreen').classList.remove('hidden');
-            } else if (state.lives <= 0) {
-                state.running = false;
-                document.getElementById('gameOverScreen').classList.remove('hidden');
+        function checkGameStatus() {
+            if (score >= TARGET_SCORE) {
+                isGameActive = false;
+                document.getElementById('final-score').textContent = score;
+                document.getElementById('final-moves').textContent = moves;
+                winModal.classList.remove('hidden');
+            } else if (moves >= MAX_MOVES) {
+                isGameActive = false;
+                loseModal.classList.remove('hidden');
             }
         }
 
         // --- 流程控制 ---
-        
+
         function startGame() {
-            document.getElementById('startScreen').classList.add('hidden');
-            document.getElementById('winScreen').classList.add('hidden');
-            document.getElementById('gameOverScreen').classList.add('hidden');
+            score = 0;
+            moves = 0;
+            isGameActive = true;
+
+            maxMovesDisplay.textContent = MAX_MOVES;
             
-            state.score = 0;
-            state.lives = CONFIG.maxLives;
-            state.items = [];
-            state.running = true;
-            
-            document.getElementById('scoreVal').innerText = 0;
-            updateLivesDisplay();
-            loop();
+            initializeGrid();
+            renderBoard();
+            updateDisplay();
+
+            startModal.classList.add('hidden');
+            winModal.classList.add('hidden');
+            loseModal.classList.add('hidden');
         }
 
-        function resetGame() {
-            startGame();
-        }
-
-        // --- 控制逻辑 (触摸/鼠标) ---
-        canvas.addEventListener('touchmove', function(e) {
-            if (!state.running) return;
-            e.preventDefault(); 
-            let touch = e.touches[0];
-            // 确保玩家在屏幕内
-            state.player.x = Math.max(state.player.size/2, Math.min(w - state.player.size/2, touch.clientX));
-        }, { passive: false });
-
-        canvas.addEventListener('mousemove', function(e) {
-            if(state.running) state.player.x = e.clientX;
-        });
-
+        window.onload = () => {
+             // 页面加载时显示开始弹窗
+             maxMovesDisplay.textContent = MAX_MOVES;
+        };
     </script>
 </body>
 </html>
