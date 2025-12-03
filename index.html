@@ -3,82 +3,77 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>✨ 爱心气泡消除 ✨</title>
+    <title>🧩 拼出我们的回忆 🧩</title>
     <style>
         /* 全局样式 */
         body {
             margin: 0; padding: 0;
             overflow: hidden;
-            background: linear-gradient(120deg, #f0f8ff 0%, #ffc0cb 100%); /* 渐变粉蓝背景 */
+            background: linear-gradient(to bottom right, #f7f3ff 0%, #ffc0d9 100%);
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
             min-height: 100vh;
             font-family: 'Arial', sans-serif;
-            color: #333;
+            color: #5d3f6a;
         }
 
-        /* 游戏板和卡片 */
-        #game-board {
+        /* 游戏板 */
+        #puzzle-container {
             display: grid;
-            grid-template-columns: repeat(8, 1fr); /* 8x8 网格 */
-            gap: 2px;
-            padding: 5px;
-            background-color: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(255, 105, 180, 0.4);
-            width: 95vw;
-            max-width: 400px; /* 限制最大宽度，保证手机端体验 */
+            grid-template-columns: repeat(3, 1fr); /* 3x3 网格 */
+            gap: 5px;
+            width: 90vw;
+            max-width: 350px; /* 确保在手机上足够大但不会撑满 */
+            margin-top: 20px;
+            border: 5px solid #ff99c8;
+            border-radius: 10px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+            background-color: #ffb3d9;
+        }
+
+        /* 拼图块 */
+        .tile {
+            width: 100%;
+            padding-top: 100%; /* 确保正方形 */
+            position: relative;
+            background-image: url('puzzle_image.jpg'); /* 引入你的照片 */
+            background-size: 300% 300%; /* 因为是 3x3，所以背景尺寸是 3 倍 */
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            border-radius: 5px;
+            box-sizing: border-box;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        /* 隐藏的空白块 */
+        .empty {
+            background: none !important;
+            border: none;
+            cursor: default;
         }
         
-        .cell {
-            width: 100%;
-            padding-top: 100%; /* 正方形 */
-            position: relative;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0; /* 默认隐藏emoji，等待JS渲染 */
-            transition: transform 0.1s ease, opacity 0.3s ease;
-            user-select: none;
-            border-radius: 4px;
-        }
-
-        .cell .emoji {
-            position: absolute;
-            font-size: 30px;
-            transform: scale(1);
-            transition: transform 0.2s ease;
-        }
-
-        .cell:active .emoji {
-            transform: scale(0.9);
-        }
-
         /* 顶部 UI 区域 */
         #ui-top {
-            width: 95vw;
-            max-width: 400px;
+            width: 90vw;
+            max-width: 350px;
             display: flex;
             justify-content: space-between;
-            margin-bottom: 10px;
+            margin: 20px 0 10px;
             font-size: 1.1em;
             font-weight: bold;
-            background: rgba(255, 255, 255, 0.8);
-            padding: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px 15px;
             border-radius: 10px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
+        .moves-display { color: #8a2be2; }
+        .time-display { color: #ff69b4; }
 
-        .score-display { color: #ff69b4; }
-        .moves-display { color: #4b0082; }
-
-        /* 弹窗样式 (沿用之前的浪漫风格) */
+        /* 弹窗样式 (沿用浪漫风格) */
         .modal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.7); display: flex;
+            background: rgba(0, 0, 0, 0.8); display: flex;
             align-items: center; justify-content: center; z-index: 100;
         }
         .modal-content {
@@ -92,206 +87,246 @@
             border-radius: 50px; margin-top: 20px; cursor: pointer;
         }
         .hidden { display: none !important; }
+
     </style>
 </head>
 <body>
-
+    
     <div id="ui-top">
-        <div class="score-display">分数: <span id="score">0</span></div>
-        <div class="moves-display">步数: <span id="moves">0</span> / <span id="max-moves">20</span></div>
+        <div class="moves-display">步数: <span id="moves">0</span></div>
+        <div class="time-display">时间: <span id="time">0</span>s</div>
     </div>
 
-    <div id="game-board">
+    <div id="puzzle-container">
         </div>
 
     <div id="start-modal" class="modal">
         <div class="modal-content">
-            <h1>消除烦恼，接住爱意！</h1>
-            <p>请点击消除相邻的相同气泡。</p>
-            <p>消除越多，得分越高！目标：达到 1000 分！</p>
-            <button class="btn" onclick="startGame()">开始消除</button>
+            <h1>🧩 拼出我们的爱 🧩</h1>
+            <p>点击或滑动方块，把我们的照片拼完整！</p>
+            <p>看看谁能用最少步数完成挑战！</p>
+            <button class="btn" onclick="startGame()">开始挑战</button>
         </div>
     </div>
 
     <div id="win-modal" class="modal hidden">
         <div class="modal-content">
-            <h1>🎉 恭喜你，消除大师！🎉</h1>
-            <p>你在 <span id="final-moves"></span> 步内达到了 <span id="final-score"></span> 分！</p>
+            <h1>🎉 回忆完整，完美拼图！🎉</h1>
+            <p>你用了 <span id="final-moves"></span> 步，耗时 <span id="final-time"></span> 秒完成！</p>
             <p style="font-size: 20px; color:#ff4081;">
-                （这里写一句私人定制的甜言蜜语：你把所有的烦恼都消除了！只剩下爱！）
+                （这里写一句私人定制的甜言蜜语，比如：你太棒了，我们的回忆一点也没落下！）
             </p>
             <button class="btn" onclick="location.reload()">再玩一次</button>
         </div>
     </div>
 
-    <div id="lose-modal" class="modal hidden">
-        <div class="modal-content">
-            <h1>💔 步数用尽，下次再战！</h1>
-            <p>再多一点点策略就可以成功了！</p>
-            <button class="btn" onclick="location.reload()">再玩一次</button>
-        </div>
-    </div>
-
     <script>
-        const gameBoard = document.getElementById('game-board');
-        const scoreDisplay = document.getElementById('score');
+        const container = document.getElementById('puzzle-container');
         const movesDisplay = document.getElementById('moves');
-        const maxMovesDisplay = document.getElementById('max-moves');
-        const startModal = document.getElementById('start-modal');
+        const timeDisplay = document.getElementById('time');
         const winModal = document.getElementById('win-modal');
-        const loseModal = document.getElementById('lose-modal');
+        const startModal = document.getElementById('start-modal');
+        
+        const SIZE = 3; // 3x3 拼图
+        const TOTAL_TILES = SIZE * SIZE; 
+        const EMPTY_INDEX = TOTAL_TILES - 1; // 空白块的理想位置 (最后一个)
 
-        // --- 游戏配置 ---
-        const GRID_SIZE = 8;        // 8x8 网格
-        const MAX_MOVES = 20;       // 最大步数
-        const TARGET_SCORE = 1000;  // 获胜分数
-        
-        // 可消除的元素 (5 种类型)
-        const EMOJIS = ['❤️', '✨', '💋', '🌟', '💖']; 
-        
-        // --- 游戏状态 ---
-        let grid = [];
-        let score = 0;
+        let tiles = []; // 存储所有块的当前顺序 (索引 0-8)
         let moves = 0;
+        let time = 0;
+        let timerInterval;
         let isGameActive = false;
 
-        // --- 核心逻辑：深度优先搜索 (DFS) 查找相邻组 ---
-        function findGroup(r, c, type, group, visited) {
-            if (r < 0 || r >= GRID_SIZE || c < 0 || c >= GRID_SIZE) return;
-            if (visited[r][c] || grid[r][c] !== type) return;
+        // --- 核心逻辑 ---
 
-            visited[r][c] = true;
-            group.push({r, c});
-
-            // 检查上下左右四个邻居
-            findGroup(r + 1, c, type, group, visited);
-            findGroup(r - 1, c, type, group, visited);
-            findGroup(r, c + 1, type, group, visited);
-            findGroup(r, c - 1, type, group, group); 
-            // 注意：这里最后一个参数 group 应为 visited，但为了简化，我们仅在主函数中传递 group
-        }
-        
-        // 修正后的 DFS (使用独立的 visited 数组)
-        function findGroupDFS(r, c, type, group, visited) {
-             if (r < 0 || r >= GRID_SIZE || c < 0 || c >= GRID_SIZE) return;
-             if (visited[r][c] || grid[r][c] !== type) return;
-             
-             visited[r][c] = true;
-             group.push({r, c});
-             
-             // 检查上下左右
-             findGroupDFS(r + 1, c, type, group, visited);
-             findGroupDFS(r - 1, c, type, group, visited);
-             findGroupDFS(r, c + 1, type, group, visited);
-             findGroupDFS(r, c - 1, type, group, visited);
-        }
-
-        // --- 游戏流程函数 ---
-
-        function initializeGrid() {
-            grid = Array(GRID_SIZE).fill(0).map(() => 
-                Array(GRID_SIZE).fill(0).map(() => getRandomEmoji())
-            );
-        }
-        
-        function getRandomEmoji() {
-            return EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
-        }
-
-        function renderBoard() {
-            gameBoard.innerHTML = '';
-            gameBoard.style.gridTemplateColumns = `repeat(${GRID_SIZE}, 1fr)`;
-
-            for (let r = 0; r < GRID_SIZE; r++) {
-                for (let c = 0; c < GRID_SIZE; c++) {
-                    const cell = document.createElement('div');
-                    cell.classList.add('cell');
-                    cell.dataset.row = r;
-                    cell.dataset.col = c;
-                    cell.innerHTML = `<span class="emoji">${grid[r][c]}</span>`;
-                    cell.onclick = () => handleCellClick(r, c);
-                    gameBoard.appendChild(cell);
+        // 1. 设置每个拼图块的背景位置
+        function setTileBackgrounds() {
+            tiles.forEach((tile, index) => {
+                if (index !== EMPTY_INDEX) {
+                    const row = Math.floor(index / SIZE);
+                    const col = index % SIZE;
+                    const tileElement = document.getElementById(`tile-${index}`);
+                    
+                    // 计算该方块应该显示照片的哪个部分
+                    // 背景尺寸是 300% 300% (3x3)，所以每个块显示 1/3
+                    const bgX = (col / (SIZE - 1)) * -100; // -0% -50% -100%
+                    const bgY = (row / (SIZE - 1)) * -100;
+                    
+                    tileElement.style.backgroundPosition = `${bgX}% ${bgY}%`;
                 }
-            }
-        }
-
-        function handleCellClick(r, c) {
-            if (!isGameActive) return;
-
-            const clickedType = grid[r][c];
-            const group = [];
-            const visited = Array(GRID_SIZE).fill(0).map(() => Array(GRID_SIZE).fill(false));
-            
-            // 查找相邻组
-            findGroupDFS(r, c, clickedType, group, visited);
-            
-            // 只有找到 2 个或更多相邻元素时才进行消除
-            if (group.length >= 2) {
-                moves++;
-                
-                // 1. 消除与计分 (消除越多，分数增长越快：N * N * 10)
-                const scoreGained = group.length * group.length * 10;
-                score += scoreGained;
-
-                // 2. 移除元素并填充
-                group.forEach(({r, c}) => {
-                    grid[r][c] = getRandomEmoji(); // 简单填充
-                });
-                
-                // 3. 更新界面
-                updateDisplay();
-                
-                // 4. 检查游戏状态
-                checkGameStatus();
-            }
-        }
-
-        function updateDisplay() {
-            scoreDisplay.textContent = score;
-            movesDisplay.textContent = moves;
-            
-            // 重新渲染，用简单填充替换复杂动画
-            document.querySelectorAll('.cell').forEach(cell => {
-                const r = parseInt(cell.dataset.row);
-                const c = parseInt(cell.dataset.col);
-                cell.querySelector('.emoji').textContent = grid[r][c];
             });
         }
-        
-        function checkGameStatus() {
-            if (score >= TARGET_SCORE) {
-                isGameActive = false;
-                document.getElementById('final-score').textContent = score;
-                document.getElementById('final-moves').textContent = moves;
-                winModal.classList.remove('hidden');
-            } else if (moves >= MAX_MOVES) {
-                isGameActive = false;
-                loseModal.classList.remove('hidden');
+
+        // 2. 初始化拼图块（顺序排列）
+        function createTiles() {
+            container.innerHTML = '';
+            tiles = Array.from({ length: TOTAL_TILES }, (_, i) => i); // [0, 1, 2, ..., 8]
+
+            tiles.forEach((_, index) => {
+                const tileElement = document.createElement('div');
+                tileElement.id = `tile-${index}`;
+                tileElement.classList.add('tile');
+                
+                if (index === EMPTY_INDEX) {
+                    tileElement.classList.add('empty');
+                } else {
+                    tileElement.textContent = index + 1; // 显示数字用于调试
+                    tileElement.onclick = () => handleMove(index);
+                }
+                container.appendChild(tileElement);
+            });
+            
+            // 必须先创建 DOM 元素，才能设置背景
+            setTileBackgrounds();
+        }
+
+        // 3. 打乱拼图（确保可解）
+        function shuffleTiles() {
+            do {
+                // 随机打乱数组
+                for (let i = TOTAL_TILES - 2; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
+                }
+            } while (!isSolvable() || isSolved()); // 确保可解且不是初始状态
+        }
+
+        // 4. 检查拼图是否可解 (Slide Puzzle 规则)
+        function isSolvable() {
+            let inversions = 0;
+            // 仅计算非空白块的逆序数
+            const currentTiles = tiles.filter(t => t !== EMPTY_INDEX);
+            
+            for (let i = 0; i < currentTiles.length; i++) {
+                for (let j = i + 1; j < currentTiles.length; j++) {
+                    if (currentTiles[i] > currentTiles[j]) {
+                        inversions++;
+                    }
+                }
+            }
+            // 3x3 棋盘，逆序数为偶数则可解
+            return inversions % 2 === 0; 
+        }
+
+        // 5. 处理移动逻辑
+        function handleMove(clickedIndex) {
+            if (!isGameActive) return;
+
+            const emptyIndex = tiles.indexOf(EMPTY_INDEX);
+            
+            // 检查点击的方块是否与空白块相邻
+            if (isAdjacent(clickedIndex, emptyIndex)) {
+                
+                // 交换数组中的值
+                [tiles[clickedIndex], tiles[emptyIndex]] = [tiles[emptyIndex], tiles[clickedIndex]];
+                
+                moves++;
+                movesDisplay.textContent = moves;
+
+                // 交换 DOM 元素的位置 (通过交换它们的 ID/类来实现)
+                const clickedElement = document.getElementById(`tile-${clickedIndex}`);
+                const emptyElement = document.getElementById(`tile-${emptyIndex}`);
+                
+                // 直接交换元素类和事件（这是最简单的 DOM 交换方式）
+                clickedElement.classList.remove('empty');
+                emptyElement.classList.add('empty');
+                
+                clickedElement.onclick = null;
+                emptyElement.onclick = () => handleMove(emptyIndex);
+                
+                // 交换 ID 保持一致性 (必须交换 DOM 元素的 ID 来对应数组索引)
+                clickedElement.id = `tile-${emptyIndex}`;
+                emptyElement.id = `tile-${clickedIndex}`;
+                
+                checkWin();
             }
         }
 
-        // --- 流程控制 ---
+        // 6. 检查两个索引是否相邻
+        function isAdjacent(index1, index2) {
+            const row1 = Math.floor(index1 / SIZE);
+            const col1 = index1 % SIZE;
+            const row2 = Math.floor(index2 / SIZE);
+            const col2 = index2 % SIZE;
 
-        function startGame() {
-            score = 0;
-            moves = 0;
-            isGameActive = true;
-
-            maxMovesDisplay.textContent = MAX_MOVES;
-            
-            initializeGrid();
-            renderBoard();
-            updateDisplay();
-
-            startModal.classList.add('hidden');
-            winModal.classList.add('hidden');
-            loseModal.classList.add('hidden');
+            // 检查是否在同一行且相邻，或同一列且相邻
+            return (Math.abs(row1 - row2) + Math.abs(col1 - col2) === 1);
         }
 
-        window.onload = () => {
-             // 页面加载时显示开始弹窗
-             maxMovesDisplay.textContent = MAX_MOVES;
-        };
+        // 7. 检查胜利条件
+        function isSolved() {
+            // 检查当前数组是否是 [0, 1, 2, ..., 8]
+            return tiles.every((val, index) => val === index);
+        }
+        
+        function checkWin() {
+            if (isSolved()) {
+                clearInterval(timerInterval);
+                isGameActive = false;
+                
+                // 最终的空白块也显示照片
+                document.getElementById(`tile-${EMPTY_INDEX}`).classList.remove('empty'); 
+                
+                document.getElementById('final-moves').textContent = moves;
+                document.getElementById('final-time').textContent = time;
+                winModal.classList.remove('hidden');
+            }
+        }
+
+        // 8. 计时器
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                time++;
+                timeDisplay.textContent = time;
+            }, 1000);
+        }
+
+        // --- 游戏流程控制 ---
+        function startGame() {
+            startModal.classList.add('hidden');
+            winModal.classList.add('hidden');
+            
+            moves = 0;
+            time = 0;
+            movesDisplay.textContent = 0;
+            timeDisplay.textContent = 0;
+            
+            clearInterval(timerInterval);
+            
+            createTiles(); // 创建有序的方块
+            shuffleTiles(); // 打乱方块数组
+            
+            // 重新渲染 DOM 顺序（这里需要重新渲染 DOM 结构或者手动交换 DOM 元素位置）
+            // 简单的做法是重新创建 DOM
+            container.innerHTML = '';
+            tiles.forEach((originalIndex, currentDOMIndex) => {
+                const tileElement = document.createElement('div');
+                tileElement.id = `tile-${currentDOMIndex}`;
+                tileElement.classList.add('tile');
+                
+                if (originalIndex === EMPTY_INDEX) {
+                    tileElement.classList.add('empty');
+                    tileElement.onclick = null;
+                } else {
+                    // 这里不能用原来的 originalIndex，需要用 currentDOMIndex 来设置事件
+                    tileElement.onclick = () => handleMove(currentDOMIndex); 
+                }
+                
+                // 设置背景位置依赖于原始索引 (originalIndex)
+                const row = Math.floor(originalIndex / SIZE);
+                const col = originalIndex % SIZE;
+                const bgX = (col / (SIZE - 1)) * -100;
+                const bgY = (row / (SIZE - 1)) * -100;
+                tileElement.style.backgroundPosition = `${bgX}% ${bgY}%`;
+                
+                container.appendChild(tileElement);
+            });
+            
+            isGameActive = true;
+            startTimer();
+        }
+
+        window.onload = createTiles; // 页面加载时先展示有序的拼图
     </script>
 </body>
 </html>
