@@ -8,7 +8,7 @@
         body {
             margin: 0; padding: 0;
             overflow: hidden;
-            background-color: #fce4ec; /* 淡粉色背景 */
+            background-color: #fce4ec;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -16,13 +16,13 @@
             min-height: 100vh;
             font-family: 'Arial', sans-serif;
             user-select: none;
-            touch-action: none; /* 防止移动端滚动 */
+            touch-action: none;
         }
 
         #gameCanvas {
             border: 5px solid #ff80ab;
             border-radius: 10px;
-            background-color: #fff0f5; /* 游戏背景：更淡的粉色 */
+            background-color: #fff0f5;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
             touch-action: none;
         }
@@ -39,7 +39,17 @@
             z-index: 10;
         }
 
-        /* 游戏结束/开始时的覆盖层 */
+        #level-info {
+            position: absolute;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 20px;
+            color: #4b0082;
+            font-weight: bold;
+            z-index: 10;
+        }
+
         .overlay {
             position: absolute;
             top: 0; left: 0;
@@ -53,15 +63,32 @@
         
         .message-box {
             background: #fff;
-            padding: 40px;
+            padding: 30px;
             border-radius: 20px;
             text-align: center;
             box-shadow: 0 0 50px rgba(255, 105, 180, 0.8);
             border: 4px solid #ff69b4;
+            max-width: 320px;
         }
         
-        h1 { color: #ff3366; margin-bottom: 15px; font-size: 32px; }
-        p { color: #666; font-size: 18px; line-height: 1.5; }
+        h1 { color: #ff3366; margin-bottom: 15px; font-size: 28px; }
+        p { color: #666; font-size: 16px; line-height: 1.5; }
+
+        .difficulty-list {
+            margin: 20px 0;
+        }
+
+        .diff-btn {
+            background: linear-gradient(45deg, #ff6b81, #ff4757);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 50px;
+            margin: 6px;
+            cursor: pointer;
+        }
+
         .btn {
             background: linear-gradient(45deg, #ff6b81, #ff4757);
             color: white;
@@ -69,229 +96,272 @@
             padding: 12px 30px;
             font-size: 18px;
             border-radius: 50px;
-            margin-top: 20px;
+            margin-top: 10px;
             cursor: pointer;
         }
+
         .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
     <div id="score-board">0</div>
+    <div id="level-info">关卡：1 简单 | 目标：10分</div>
     <canvas id="gameCanvas"></canvas>
 
-    <div id="start-overlay" class="overlay">
+    <!-- 难度选择 -->
+    <div id="difficulty-overlay" class="overlay">
         <div class="message-box">
             <h1>❤️ 跳跃的爱心 ❤️</h1>
-            <p>点击/触碰屏幕，让爱心穿过所有烦恼！</p>
-            <p style="font-size: 24px; color:#ff4081;">点击开始！</p>
-            <button class="btn" onclick="startGame()">开始游戏</button>
+            <p>选择难度开始闯关</p>
+            <div class="difficulty-list">
+                <button class="diff-btn" onclick="selectLevel(1)">关卡1 简单</button>
+                <button class="diff-btn" onclick="selectLevel(2)">关卡2 普通</button>
+                <button class="diff-btn" onclick="selectLevel(3)">关卡3 困难</button>
+                <button class="diff-btn" onclick="selectLevel(4)">关卡4 地狱</button>
+            </div>
+            <p>每关达到目标分即可解锁下一难度</p>
         </div>
     </div>
-    
+
+    <!-- 游戏结束 -->
     <div id="gameover-overlay" class="overlay hidden">
         <div class="message-box">
             <h1>💔 挑战失败</h1>
-            <p>你的分数是: <span id="final-score">0</span></p>
-            <p id="high-score-msg" style="color: #4b0082;"></p>
-            <button class="btn" onclick="startGame()">再来一次</button>
+            <p>你的分数：<span id="final-score">0</span></p>
+            <p id="target-tip"></p>
+            <p id="high-score-msg" style="color:#4b0082;"></p>
+            <button class="btn" onclick="backToDifficulty()">返回选择</button>
+            <button class="btn" onclick="restartCurrentLevel()">重试本关</button>
+        </div>
+    </div>
+
+    <!-- 通关 -->
+    <div id="pass-overlay" class="overlay hidden">
+        <div class="message-box">
+            <h1>🎉 恭喜通关！</h1>
+            <p>当前分数：<span id="pass-score">0</span></p>
+            <p id="next-level-tip"></p>
+            <button class="btn" onclick="goNextLevel()">进入下一关卡</button>
+            <button class="btn" onclick="backToDifficulty()">返回选择</button>
         </div>
     </div>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        
-        // 确保 Canvas 尺寸适合手机
+
         const CANVAS_WIDTH = Math.min(window.innerWidth * 0.9, 400);
-        const CANVAS_HEIGHT = CANVAS_WIDTH * 1.5; // 保持较高的比例
+        const CANVAS_HEIGHT = CANVAS_WIDTH * 1.5;
         canvas.width = CANVAS_WIDTH;
         canvas.height = CANVAS_HEIGHT;
 
-        // --- 游戏配置 ---
-        const PLAYER_SIZE = 25;
-        const GRAVITY = 0.8;
-        const JUMP_VELOCITY = -12;
-        const PIPE_SPEED = 3;
-        const PIPE_WIDTH = 50;
-        const PIPE_GAP = 150;
-        const PIPE_SPAWN_RATE = 100; // 约 1.5 秒生成一个
+        // 难度配置：重力、跳力、速度、间距、生成间隔、目标分
+        const levelConfig = [
+            {}, // 0占位
+            { gravity:0.5, jump:-12, speed:2, gap:180, spawn:130, target:10, name:"简单" },   //1
+            { gravity:0.7, jump:-12, speed:3, gap:160, spawn:110, target:20, name:"普通" },   //2
+            { gravity:0.9, jump:-11, speed:4, gap:140, spawn:90,  target:35, name:"困难" },   //3
+            { gravity:1.1, jump:-10, speed:5, gap:120, spawn:75,  target:50, name:"地狱" }   //4
+        ];
 
-        // --- 游戏状态 ---
+        // 游戏状态
+        let currentLevel = 1;
         let playerY = CANVAS_HEIGHT / 2;
         let playerVelocity = 0;
         let pipes = [];
         let score = 0;
-        let highScore = localStorage.getItem('flappyHeartHighScore') || 0;
+        let highScore = localStorage.getItem('heartHighScore') || 0;
         let isGameRunning = false;
         let frameCount = 0;
-        
-        // --- DOM 元素 ---
+
+        // DOM
         const scoreBoard = document.getElementById('score-board');
-        const startOverlay = document.getElementById('start-overlay');
+        const levelInfo = document.getElementById('level-info');
+        const difficultyOverlay = document.getElementById('difficulty-overlay');
         const gameoverOverlay = document.getElementById('gameover-overlay');
-        
-        // --- 游戏核心对象 ---
+        const passOverlay = document.getElementById('pass-overlay');
 
-        function drawPlayer() {
-            ctx.fillStyle = '#ff3366'; // 爱心红色
-            ctx.beginPath();
-            ctx.arc(CANVAS_WIDTH / 4, playerY, PLAYER_SIZE, 0, Math.PI * 2);
-            ctx.fill();
-            // 在爱心上写一个 emoji (可选，可能影响性能，这里用简单的填充)
-            // ctx.font = '20px Arial';
-            // ctx.fillText('❤️', CANVAS_WIDTH / 4, playerY);
+        // 选择关卡
+        function selectLevel(level) {
+            currentLevel = level;
+            startGame();
         }
 
-        function updatePlayer() {
-            playerVelocity += GRAVITY;
-            playerY += playerVelocity;
-
-            // 检查边界碰撞
-            if (playerY + PLAYER_SIZE > CANVAS_HEIGHT || playerY - PLAYER_SIZE < 0) {
-                gameOver();
-            }
-        }
-        
-        function jump() {
-            if (isGameRunning) {
-                playerVelocity = JUMP_VELOCITY;
-            }
-        }
-
-        // --- 障碍物逻辑 ---
-        
-        function spawnPipe() {
-            const minHeight = 50;
-            const maxHeight = CANVAS_HEIGHT - PIPE_GAP - minHeight;
-            const height = Math.floor(Math.random() * (maxHeight - minHeight + 1)) + minHeight;
-            
-            pipes.push({
-                x: CANVAS_WIDTH,
-                topHeight: height,
-                bottomY: height + PIPE_GAP,
-                scored: false
-            });
-        }
-        
-        function updatePipes() {
-            // 移动管道
-            pipes.forEach(pipe => {
-                pipe.x -= PIPE_SPEED;
-            });
-
-            // 移除屏幕外的管道
-            pipes = pipes.filter(pipe => pipe.x > -PIPE_WIDTH);
-            
-            // 生成新管道
-            if (frameCount % PIPE_SPAWN_RATE === 0) {
-                spawnPipe();
-            }
-        }
-
-        function drawPipes() {
-            ctx.fillStyle = '#4b0082'; // 管道颜色：深紫色/负面情绪
-            pipes.forEach(pipe => {
-                // 绘制顶部管道
-                ctx.fillRect(pipe.x, 0, PIPE_WIDTH, pipe.topHeight);
-                // 绘制底部管道
-                ctx.fillRect(pipe.x, pipe.bottomY, PIPE_WIDTH, CANVAS_HEIGHT - pipe.bottomY);
-            });
-        }
-
-        // --- 碰撞和得分 ---
-
-        function checkCollision() {
-            const playerX = CANVAS_WIDTH / 4;
-            
-            for (const pipe of pipes) {
-                // 检查管道水平范围
-                if (playerX + PLAYER_SIZE > pipe.x && playerX - PLAYER_SIZE < pipe.x + PIPE_WIDTH) {
-                    
-                    // 检查垂直碰撞
-                    const isHittingTop = playerY - PLAYER_SIZE < pipe.topHeight;
-                    const isHittingBottom = playerY + PLAYER_SIZE > pipe.bottomY;
-                    
-                    if (isHittingTop || isHittingBottom) {
-                        gameOver();
-                        return true;
-                    }
-                    
-                    // 检查得分 (过了管道中心线)
-                    if (pipe.x + PIPE_WIDTH < playerX && !pipe.scored) {
-                        score++;
-                        pipe.scored = true;
-                        scoreBoard.textContent = score;
-                    }
-                }
-            }
-            return false;
-        }
-
-        // --- 游戏主循环 ---
-
-        function gameLoop() {
-            if (!isGameRunning) return;
-
-            // 1. 清空画布
-            ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-            // 2. 更新逻辑
-            updatePlayer();
-            updatePipes();
-            
-            // 3. 绘制
-            drawPipes();
-            drawPlayer();
-            
-            // 4. 检查碰撞
-            checkCollision();
-            
-            frameCount++;
-            requestAnimationFrame(gameLoop);
-        }
-
-        // --- 游戏状态控制 ---
-        
+        // 开始当前关卡
         function startGame() {
-            // 重置状态
+            const cfg = levelConfig[currentLevel];
+
             playerY = CANVAS_HEIGHT / 2;
             playerVelocity = 0;
             pipes = [];
             score = 0;
             frameCount = 0;
-            scoreBoard.textContent = 0;
             isGameRunning = true;
 
-            startOverlay.classList.add('hidden');
+            scoreBoard.textContent = 0;
+            updateLevelInfo();
+
+            difficultyOverlay.classList.add('hidden');
             gameoverOverlay.classList.add('hidden');
+            passOverlay.classList.add('hidden');
 
             gameLoop();
         }
 
-        function gameOver() {
-            isGameRunning = false;
-            
-            // 更新最高分
-            if (score > highScore) {
-                highScore = score;
-                localStorage.setItem('flappyHeartHighScore', highScore);
-                document.getElementById('high-score-msg').textContent = `新的最高分诞生了! ${highScore} 分!`;
-            } else {
-                document.getElementById('high-score-msg').textContent = `最高分: ${highScore}`;
+        function updateLevelInfo() {
+            const cfg = levelConfig[currentLevel];
+            levelInfo.textContent = `关卡${currentLevel} ${cfg.name} | 目标：${cfg.target}分`;
+        }
+
+        // 主循环
+        function gameLoop() {
+            if (!isGameRunning) return;
+            ctx.clearRect(0,0,CANVAS_WIDTH,CANVAS_HEIGHT);
+
+            updatePlayer();
+            updatePipes();
+            drawPipes();
+            drawPlayer();
+            checkCollision();
+
+            // 检查通关
+            const cfg = levelConfig[currentLevel];
+            if (score >= cfg.target) {
+                passLevel();
+                return;
             }
 
+            frameCount++;
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 玩家
+        function drawPlayer() {
+            ctx.fillStyle = '#ff3366';
+            ctx.beginPath();
+            ctx.arc(CANVAS_WIDTH / 4, playerY, 25, 0, Math.PI*2);
+            ctx.fill();
+        }
+
+        function updatePlayer() {
+            const cfg = levelConfig[currentLevel];
+            playerVelocity += cfg.gravity;
+            playerY += playerVelocity;
+
+            if (playerY+25 > CANVAS_HEIGHT || playerY-25 < 0) gameOver();
+        }
+
+        function jump() {
+            if (isGameRunning) {
+                const cfg = levelConfig[currentLevel];
+                playerVelocity = cfg.jump;
+            }
+        }
+
+        // 管道
+        function spawnPipe() {
+            const cfg = levelConfig[currentLevel];
+            const min = 50;
+            const max = CANVAS_HEIGHT - cfg.gap - min;
+            const h = Math.random()*(max-min)+min;
+
+            pipes.push({
+                x: CANVAS_WIDTH,
+                topHeight: h,
+                bottomY: h + cfg.gap,
+                scored: false
+            });
+        }
+
+        function updatePipes() {
+            const cfg = levelConfig[currentLevel];
+            pipes.forEach(p=> p.x -= cfg.speed);
+            pipes = pipes.filter(p=> p.x > -50);
+            if (frameCount % cfg.spawn === 0) spawnPipe();
+        }
+
+        function drawPipes() {
+            ctx.fillStyle = '#4b0082';
+            pipes.forEach(p=>{
+                ctx.fillRect(p.x,0,50,p.topHeight);
+                ctx.fillRect(p.x,p.bottomY,50,CANVAS_HEIGHT-p.bottomY);
+            });
+        }
+
+        // 碰撞与得分
+        function checkCollision() {
+            const px = CANVAS_WIDTH / 4;
+            for (const p of pipes) {
+                if (px+25 > p.x && px-25 < p.x+50) {
+                    if (playerY-25 < p.topHeight || playerY+25 > p.bottomY) {
+                        gameOver();
+                        return;
+                    }
+                    if (p.x+50 < px && !p.scored) {
+                        score++;
+                        p.scored = true;
+                        scoreBoard.textContent = score;
+                    }
+                }
+            }
+        }
+
+        // 游戏结束
+        function gameOver() {
+            isGameRunning = false;
             document.getElementById('final-score').textContent = score;
+            const cfg = levelConfig[currentLevel];
+            document.getElementById('target-tip').textContent = `本关目标：${cfg.target}分`;
+
+            if (score>highScore) {
+                highScore=score;
+                localStorage.setItem('heartHighScore',highScore);
+                document.getElementById('high-score-msg').textContent="新高分！";
+            } else {
+                document.getElementById('high-score-msg').textContent=`最高分：${highScore}`;
+            }
+
             gameoverOverlay.classList.remove('hidden');
         }
-        
-        // 绑定点击/触摸事件
-        canvas.addEventListener('click', jump);
-        canvas.addEventListener('touchstart', (e) => {
-             e.preventDefault(); // 防止移动端滚动
-             jump();
-        });
 
+        // 通关
+        function passLevel() {
+            isGameRunning = false;
+            document.getElementById('pass-score').textContent = score;
+
+            if (currentLevel >=4) {
+                document.getElementById('next-level-tip').textContent="🎉 你已通关全部关卡！";
+            } else {
+                document.getElementById('next-level-tip').textContent=`即将解锁 关卡${currentLevel+1}`;
+            }
+
+            passOverlay.classList.remove('hidden');
+        }
+
+        // 按钮
+        function restartCurrentLevel() {
+            startGame();
+        }
+
+        function backToDifficulty() {
+            gameoverOverlay.classList.add('hidden');
+            passOverlay.classList.add('hidden');
+            difficultyOverlay.classList.remove('hidden');
+        }
+
+        function goNextLevel() {
+            if (currentLevel <4) {
+                currentLevel++;
+                startGame();
+            } else {
+                backToDifficulty();
+            }
+        }
+
+        // 事件
+        canvas.addEventListener('click', jump);
+        canvas.addEventListener('touchstart', e=>{e.preventDefault(); jump()});
     </script>
 </body>
-</html>          
+</html>
