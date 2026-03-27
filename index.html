@@ -3,295 +3,178 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>❤️ 跳跃的爱心 ❤️</title>
+    <title>工作面板</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
         body {
-            margin: 0; padding: 0;
-            overflow: hidden;
-            background-color: #fce4ec; /* 淡粉色背景 */
+            background: #f1f1f1;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            font-family: 'Arial', sans-serif;
+            font-family: system-ui, -apple-system, sans-serif;
             user-select: none;
-            touch-action: none; /* 防止移动端滚动 */
-        }
-
-        #gameCanvas {
-            border: 5px solid #ff80ab;
-            border-radius: 10px;
-            background-color: #fff0f5; /* 游戏背景：更淡的粉色 */
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
             touch-action: none;
+            color: #333;
         }
-
-        #score-board {
-            position: absolute;
-            top: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 48px;
-            font-weight: bold;
-            color: #ff3366;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-            z-index: 10;
+        #score {
+            font-size: 22px;
+            font-weight: 500;
+            margin-bottom: 10px;
+            color: #555;
         }
-
-        /* 游戏结束/开始时的覆盖层 */
-        .overlay {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 20;
-            background: rgba(255, 255, 255, 0.8);
-        }
-        
-        .message-box {
+        #canvas {
+            border: 1px solid #ccc;
             background: #fff;
-            padding: 40px;
-            border-radius: 20px;
-            text-align: center;
-            box-shadow: 0 0 50px rgba(255, 105, 180, 0.8);
-            border: 4px solid #ff69b4;
+            border-radius: 4px;
         }
-        
-        h1 { color: #ff3366; margin-bottom: 15px; font-size: 32px; }
-        p { color: #666; font-size: 18px; line-height: 1.5; }
-        .btn {
-            background: linear-gradient(45deg, #ff6b81, #ff4757);
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            font-size: 18px;
-            border-radius: 50px;
-            margin-top: 20px;
-            cursor: pointer;
+        #tip {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #888;
         }
-        .hidden { display: none !important; }
     </style>
 </head>
 <body>
-
-    <div id="score-board">0</div>
-    <canvas id="gameCanvas"></canvas>
-
-    <div id="start-overlay" class="overlay">
-        <div class="message-box">
-            <h1>❤️ 跳跃的爱心 ❤️</h1>
-            <p>点击/触碰屏幕，让爱心穿过所有烦恼！</p>
-            <p style="font-size: 24px; color:#ff4081;">点击开始！</p>
-            <button class="btn" onclick="startGame()">开始游戏</button>
-        </div>
-    </div>
-    
-    <div id="gameover-overlay" class="overlay hidden">
-        <div class="message-box">
-            <h1>💔 挑战失败</h1>
-            <p>你的分数是: <span id="final-score">0</span></p>
-            <p id="high-score-msg" style="color: #4b0082;"></p>
-            <button class="btn" onclick="startGame()">再来一次</button>
-        </div>
-    </div>
+    <div id="score">分数：0</div>
+    <canvas id="canvas"></canvas>
+    <div id="tip">点击/触摸屏幕控制方块</div>
 
     <script>
-        const canvas = document.getElementById('gameCanvas');
+        const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        
-        // 确保 Canvas 尺寸适合手机
-        const CANVAS_WIDTH = Math.min(window.innerWidth * 0.9, 400);
-        const CANVAS_HEIGHT = CANVAS_WIDTH * 1.5; // 保持较高的比例
-        canvas.width = CANVAS_WIDTH;
-        canvas.height = CANVAS_HEIGHT;
+        const scoreEl = document.getElementById('score');
 
-        // --- 游戏配置 ---
-        const PLAYER_SIZE = 25;
-        const GRAVITY = 0.8;
-        const JUMP_VELOCITY = -12;
-        const PIPE_SPEED = 3;
-        const PIPE_WIDTH = 50;
-        const PIPE_GAP = 150;
-        const PIPE_SPAWN_RATE = 100; // 约 1.5 秒生成一个
+        // 尺寸适配手机
+        const W = Math.min(window.innerWidth - 20, 320);
+        const H = 500;
+        canvas.width = W;
+        canvas.height = H;
 
-        // --- 游戏状态 ---
-        let playerY = CANVAS_HEIGHT / 2;
-        let playerVelocity = 0;
+        // 游戏参数（非常低调、朴素）
+        const player = {
+            x: 80,
+            y: H / 2,
+            w: 20,
+            h: 20,
+            vy: 0,
+            gravity: 0.4,
+            jump: -8
+        };
+
+        const pipeWidth = 30;
+        const pipeSpeed = 3;
+        const gap = 140;
         let pipes = [];
         let score = 0;
-        let highScore = localStorage.getItem('flappyHeartHighScore') || 0;
-        let isGameRunning = false;
-        let frameCount = 0;
-        
-        // --- DOM 元素 ---
-        const scoreBoard = document.getElementById('score-board');
-        const startOverlay = document.getElementById('start-overlay');
-        const gameoverOverlay = document.getElementById('gameover-overlay');
-        
-        // --- 游戏核心对象 ---
+        let frame = 0;
+        let running = false;
 
         function drawPlayer() {
-            ctx.fillStyle = '#ff3366'; // 爱心红色
-            ctx.beginPath();
-            ctx.arc(CANVAS_WIDTH / 4, playerY, PLAYER_SIZE, 0, Math.PI * 2);
-            ctx.fill();
-            // 在爱心上写一个 emoji (可选，可能影响性能，这里用简单的填充)
-            // ctx.font = '20px Arial';
-            // ctx.fillText('❤️', CANVAS_WIDTH / 4, playerY);
+            ctx.fillStyle = '#444';
+            ctx.fillRect(player.x, player.y, player.w, player.h);
         }
 
         function updatePlayer() {
-            playerVelocity += GRAVITY;
-            playerY += playerVelocity;
-
-            // 检查边界碰撞
-            if (playerY + PLAYER_SIZE > CANVAS_HEIGHT || playerY - PLAYER_SIZE < 0) {
+            player.vy += player.gravity;
+            player.y += player.vy;
+            // 撞上下边界即结束
+            if (player.y < 0 || player.y + player.h > H) {
                 gameOver();
             }
         }
-        
+
         function jump() {
-            if (isGameRunning) {
-                playerVelocity = JUMP_VELOCITY;
+            if (!running) {
+                start();
             }
+            player.vy = player.jump;
         }
 
-        // --- 障碍物逻辑 ---
-        
         function spawnPipe() {
-            const minHeight = 50;
-            const maxHeight = CANVAS_HEIGHT - PIPE_GAP - minHeight;
-            const height = Math.floor(Math.random() * (maxHeight - minHeight + 1)) + minHeight;
-            
+            const topH = 80 + Math.random() * (H - gap - 160);
             pipes.push({
-                x: CANVAS_WIDTH,
-                topHeight: height,
-                bottomY: height + PIPE_GAP,
+                x: W,
+                topH,
+                botY: topH + gap,
                 scored: false
             });
         }
-        
-        function updatePipes() {
-            // 移动管道
-            pipes.forEach(pipe => {
-                pipe.x -= PIPE_SPEED;
-            });
 
-            // 移除屏幕外的管道
-            pipes = pipes.filter(pipe => pipe.x > -PIPE_WIDTH);
-            
-            // 生成新管道
-            if (frameCount % PIPE_SPAWN_RATE === 0) {
-                spawnPipe();
-            }
+        function updatePipes() {
+            pipes.forEach(p => p.x -= pipeSpeed);
+            pipes = pipes.filter(p => p.x + pipeWidth > 0);
+            if (frame % 90 === 0) spawnPipe();
         }
 
         function drawPipes() {
-            ctx.fillStyle = '#4b0082'; // 管道颜色：深紫色/负面情绪
-            pipes.forEach(pipe => {
-                // 绘制顶部管道
-                ctx.fillRect(pipe.x, 0, PIPE_WIDTH, pipe.topHeight);
-                // 绘制底部管道
-                ctx.fillRect(pipe.x, pipe.bottomY, PIPE_WIDTH, CANVAS_HEIGHT - pipe.bottomY);
+            ctx.fillStyle = '#999';
+            pipes.forEach(p => {
+                ctx.fillRect(p.x, 0, pipeWidth, p.topH);
+                ctx.fillRect(p.x, p.botY, pipeWidth, H - p.botY);
             });
         }
 
-        // --- 碰撞和得分 ---
-
-        function checkCollision() {
-            const playerX = CANVAS_WIDTH / 4;
-            
-            for (const pipe of pipes) {
-                // 检查管道水平范围
-                if (playerX + PLAYER_SIZE > pipe.x && playerX - PLAYER_SIZE < pipe.x + PIPE_WIDTH) {
-                    
-                    // 检查垂直碰撞
-                    const isHittingTop = playerY - PLAYER_SIZE < pipe.topHeight;
-                    const isHittingBottom = playerY + PLAYER_SIZE > pipe.bottomY;
-                    
-                    if (isHittingTop || isHittingBottom) {
+        function hitTest() {
+            const px = player.x;
+            const py = player.y;
+            const pw = player.w;
+            const ph = player.h;
+            for (const p of pipes) {
+                if (px + pw > p.x && px < p.x + pipeWidth) {
+                    if (py < p.topH || py + ph > p.botY) {
                         gameOver();
-                        return true;
-                    }
-                    
-                    // 检查得分 (过了管道中心线)
-                    if (pipe.x + PIPE_WIDTH < playerX && !pipe.scored) {
-                        score++;
-                        pipe.scored = true;
-                        scoreBoard.textContent = score;
                     }
                 }
+                if (!p.scored && p.x + pipeWidth < px) {
+                    score++;
+                    p.scored = true;
+                    scoreEl.textContent = `分数：${score}`;
+                }
             }
-            return false;
         }
 
-        // --- 游戏主循环 ---
-
-        function gameLoop() {
-            if (!isGameRunning) return;
-
-            // 1. 清空画布
-            ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-            // 2. 更新逻辑
+        function loop() {
+            if (!running) return;
+            ctx.clearRect(0, 0, W, H);
             updatePlayer();
             updatePipes();
-            
-            // 3. 绘制
             drawPipes();
             drawPlayer();
-            
-            // 4. 检查碰撞
-            checkCollision();
-            
-            frameCount++;
-            requestAnimationFrame(gameLoop);
+            hitTest();
+            frame++;
+            requestAnimationFrame(loop);
         }
 
-        // --- 游戏状态控制 ---
-        
-        function startGame() {
-            // 重置状态
-            playerY = CANVAS_HEIGHT / 2;
-            playerVelocity = 0;
+        function start() {
+            running = true;
+            player.y = H / 2;
+            player.vy = 0;
             pipes = [];
             score = 0;
-            frameCount = 0;
-            scoreBoard.textContent = 0;
-            isGameRunning = true;
-
-            startOverlay.classList.add('hidden');
-            gameoverOverlay.classList.add('hidden');
-
-            gameLoop();
+            frame = 0;
+            scoreEl.textContent = `分数：${score}`;
+            loop();
         }
 
         function gameOver() {
-            isGameRunning = false;
-            
-            // 更新最高分
-            if (score > highScore) {
-                highScore = score;
-                localStorage.setItem('flappyHeartHighScore', highScore);
-                document.getElementById('high-score-msg').textContent = `新的最高分诞生了! ${highScore} 分!`;
-            } else {
-                document.getElementById('high-score-msg').textContent = `最高分: ${highScore}`;
-            }
-
-            document.getElementById('final-score').textContent = score;
-            gameoverOverlay.classList.remove('hidden');
+            running = false;
+            setTimeout(() => {
+                alert(`游戏结束\n得分：${score}\n点击屏幕重新开始`);
+            }, 100);
         }
-        
-        // 绑定点击/触摸事件
-        canvas.addEventListener('click', jump);
-        canvas.addEventListener('touchstart', (e) => {
-             e.preventDefault(); // 防止移动端滚动
-             jump();
-        });
 
+        // 点击/触摸控制
+        canvas.addEventListener('click', jump);
+        canvas.addEventListener('touchstart', e => {
+            e.preventDefault();
+            jump();
+        });
     </script>
 </body>
 </html>
