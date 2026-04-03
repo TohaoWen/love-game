@@ -109,7 +109,6 @@
     <div id="level-info">关卡：1 简单 | 目标：10分</div>
     <canvas id="gameCanvas"></canvas>
 
-    <!-- 难度选择 -->
     <div id="difficulty-overlay" class="overlay">
         <div class="message-box">
             <h1>❤️ 跳跃的爱心 ❤️</h1>
@@ -124,7 +123,6 @@
         </div>
     </div>
 
-    <!-- 游戏结束 -->
     <div id="gameover-overlay" class="overlay hidden">
         <div class="message-box">
             <h1>💔 挑战失败</h1>
@@ -136,7 +134,6 @@
         </div>
     </div>
 
-    <!-- 通关 -->
     <div id="pass-overlay" class="overlay hidden">
         <div class="message-box">
             <h1>🎉 恭喜通关！</h1>
@@ -156,16 +153,14 @@
         canvas.width = CANVAS_WIDTH;
         canvas.height = CANVAS_HEIGHT;
 
-        // 难度配置：重力、跳力、速度、间距、生成间隔、目标分
         const levelConfig = [
-            {}, // 0占位
-            { gravity:0.5, jump:-12, speed:2, gap:180, spawn:130, target:10, name:"简单" },   //1
-            { gravity:0.7, jump:-12, speed:3, gap:160, spawn:110, target:20, name:"普通" },   //2
-            { gravity:0.9, jump:-11, speed:4, gap:140, spawn:90,  target:35, name:"困难" },   //3
-            { gravity:1.1, jump:-10, speed:5, gap:120, spawn:75,  target:50, name:"地狱" }   //4
+            {},
+            { gravity:0.5, jump:-12, speed:2, gap:180, spawn:130, target:10, name:"简单" },
+            { gravity:0.7, jump:-12, speed:3, gap:160, spawn:110, target:20, name:"普通" },
+            { gravity:0.9, jump:-11, speed:4, gap:140, spawn:90,  target:35, name:"困难" },
+            { gravity:1.1, jump:-10, speed:5, gap:120, spawn:75,  target:50, name:"地狱" }
         ];
 
-        // 游戏状态
         let currentLevel = 1;
         let playerY = CANVAS_HEIGHT / 2;
         let playerVelocity = 0;
@@ -175,23 +170,24 @@
         let isGameRunning = false;
         let frameCount = 0;
 
-        // DOM
+        // ====================== 核心优化 ======================
+        const PLAYER_RADIUS = 22;        // 稍微缩小
+        const PLAYER_SAFE_MARGIN = 4;   // 碰撞容错：向内缩，更易穿过
+        const PLAYER_X = CANVAS_WIDTH / 4 + 8; // 右移一点，不贴左
+        // ======================================================
+
         const scoreBoard = document.getElementById('score-board');
         const levelInfo = document.getElementById('level-info');
         const difficultyOverlay = document.getElementById('difficulty-overlay');
         const gameoverOverlay = document.getElementById('gameover-overlay');
         const passOverlay = document.getElementById('pass-overlay');
 
-        // 选择关卡
         function selectLevel(level) {
             currentLevel = level;
             startGame();
         }
 
-        // 开始当前关卡
         function startGame() {
-            const cfg = levelConfig[currentLevel];
-
             playerY = CANVAS_HEIGHT / 2;
             playerVelocity = 0;
             pipes = [];
@@ -205,7 +201,6 @@
             difficultyOverlay.classList.add('hidden');
             gameoverOverlay.classList.add('hidden');
             passOverlay.classList.add('hidden');
-
             gameLoop();
         }
 
@@ -214,7 +209,6 @@
             levelInfo.textContent = `关卡${currentLevel} ${cfg.name} | 目标：${cfg.target}分`;
         }
 
-        // 主循环
         function gameLoop() {
             if (!isGameRunning) return;
             ctx.clearRect(0,0,CANVAS_WIDTH,CANVAS_HEIGHT);
@@ -225,7 +219,6 @@
             drawPlayer();
             checkCollision();
 
-            // 检查通关
             const cfg = levelConfig[currentLevel];
             if (score >= cfg.target) {
                 passLevel();
@@ -236,11 +229,10 @@
             requestAnimationFrame(gameLoop);
         }
 
-        // 玩家
         function drawPlayer() {
             ctx.fillStyle = '#ff3366';
             ctx.beginPath();
-            ctx.arc(CANVAS_WIDTH / 4, playerY, 25, 0, Math.PI*2);
+            ctx.arc(PLAYER_X, playerY, PLAYER_RADIUS, 0, Math.PI*2);
             ctx.fill();
         }
 
@@ -249,7 +241,9 @@
             playerVelocity += cfg.gravity;
             playerY += playerVelocity;
 
-            if (playerY+25 > CANVAS_HEIGHT || playerY-25 < 0) gameOver();
+            if (playerY + PLAYER_RADIUS > CANVAS_HEIGHT || playerY - PLAYER_RADIUS < 0) {
+                gameOver();
+            }
         }
 
         function jump() {
@@ -259,7 +253,6 @@
             }
         }
 
-        // 管道
         function spawnPipe() {
             const cfg = levelConfig[currentLevel];
             const min = 50;
@@ -289,16 +282,24 @@
             });
         }
 
-        // 碰撞与得分
+        // ====================== 碰撞逻辑大幅优化 ======================
         function checkCollision() {
-            const px = CANVAS_WIDTH / 4;
             for (const p of pipes) {
-                if (px+25 > p.x && px-25 < p.x+50) {
-                    if (playerY-25 < p.topHeight || playerY+25 > p.bottomY) {
+                // 水平范围
+                if (PLAYER_X + PLAYER_RADIUS - PLAYER_SAFE_MARGIN > p.x &&
+                    PLAYER_X - PLAYER_RADIUS + PLAYER_SAFE_MARGIN < p.x + 50) {
+
+                    // 垂直碰撞（加容错）
+                    const hitTop = playerY - PLAYER_RADIUS + PLAYER_SAFE_MARGIN < p.topHeight;
+                    const hitBottom = playerY + PLAYER_RADIUS - PLAYER_SAFE_MARGIN > p.bottomY;
+
+                    if (hitTop || hitBottom) {
                         gameOver();
                         return;
                     }
-                    if (p.x+50 < px && !p.scored) {
+
+                    // 计分
+                    if (p.x + 50 < PLAYER_X && !p.scored) {
                         score++;
                         p.scored = true;
                         scoreBoard.textContent = score;
@@ -306,8 +307,8 @@
                 }
             }
         }
+        // ==============================================================
 
-        // 游戏结束
         function gameOver() {
             isGameRunning = false;
             document.getElementById('final-score').textContent = score;
@@ -321,11 +322,9 @@
             } else {
                 document.getElementById('high-score-msg').textContent=`最高分：${highScore}`;
             }
-
             gameoverOverlay.classList.remove('hidden');
         }
 
-        // 通关
         function passLevel() {
             isGameRunning = false;
             document.getElementById('pass-score').textContent = score;
@@ -335,31 +334,20 @@
             } else {
                 document.getElementById('next-level-tip').textContent=`即将解锁 关卡${currentLevel+1}`;
             }
-
             passOverlay.classList.remove('hidden');
         }
 
-        // 按钮
-        function restartCurrentLevel() {
-            startGame();
-        }
-
+        function restartCurrentLevel() { startGame(); }
         function backToDifficulty() {
             gameoverOverlay.classList.add('hidden');
             passOverlay.classList.add('hidden');
             difficultyOverlay.classList.remove('hidden');
         }
-
         function goNextLevel() {
-            if (currentLevel <4) {
-                currentLevel++;
-                startGame();
-            } else {
-                backToDifficulty();
-            }
+            if (currentLevel <4) { currentLevel++; startGame(); }
+            else backToDifficulty();
         }
 
-        // 事件
         canvas.addEventListener('click', jump);
         canvas.addEventListener('touchstart', e=>{e.preventDefault(); jump()});
     </script>
