@@ -153,14 +153,15 @@
         canvas.width = CANVAS_WIDTH;
         canvas.height = CANVAS_HEIGHT;
 
-        // 全局变慢：所有关卡重力都大幅降低，下落更慢
+        // ====================== 核心平衡参数（完美匹配） ======================
         const levelConfig = [
             {},
-            { gravity: 0.22, jump: -11, speed: 2, gap: 180, spawn: 130, target: 10, name: "简单" },
-            { gravity: 0.30, jump: -11, speed: 3, gap: 160, spawn: 110, target: 20, name: "普通" },
-            { gravity: 0.38, jump: -11, speed: 4, gap: 140, spawn: 90,  target: 35, name: "困难" },
-            { gravity: 0.45, jump: -11, speed: 5, gap: 120, spawn: 75,  target: 50, name: "地狱" }
+            { gravity: 0.32, jump: -8.5, speed: 2, gap: 180, spawn: 130, target: 10, name: "简单" },
+            { gravity: 0.40, jump: -9.0, speed: 3, gap: 170, spawn: 115, target: 20, name: "普通" },
+            { gravity: 0.48, jump: -9.5, speed: 4, gap: 155, spawn: 100, target: 35, name: "困难" },
+            { gravity: 0.56, jump: -10.0, speed: 5, gap: 140, spawn: 85,  target: 50, name: "地狱" }
         ];
+        // ====================================================================
 
         let currentLevel = 1;
         let playerY = CANVAS_HEIGHT / 2;
