@@ -153,12 +153,13 @@
         canvas.width = CANVAS_WIDTH;
         canvas.height = CANVAS_HEIGHT;
 
+        // 全局变慢：所有关卡重力都大幅降低，下落更慢
         const levelConfig = [
             {},
-            { gravity:0.5, jump:-12, speed:2, gap:180, spawn:130, target:10, name:"简单" },
-            { gravity:0.7, jump:-12, speed:3, gap:160, spawn:110, target:20, name:"普通" },
-            { gravity:0.9, jump:-11, speed:4, gap:140, spawn:90,  target:35, name:"困难" },
-            { gravity:1.1, jump:-10, speed:5, gap:120, spawn:75,  target:50, name:"地狱" }
+            { gravity: 0.22, jump: -11, speed: 2, gap: 180, spawn: 130, target: 10, name: "简单" },
+            { gravity: 0.30, jump: -11, speed: 3, gap: 160, spawn: 110, target: 20, name: "普通" },
+            { gravity: 0.38, jump: -11, speed: 4, gap: 140, spawn: 90,  target: 35, name: "困难" },
+            { gravity: 0.45, jump: -11, speed: 5, gap: 120, spawn: 75,  target: 50, name: "地狱" }
         ];
 
         let currentLevel = 1;
@@ -170,11 +171,9 @@
         let isGameRunning = false;
         let frameCount = 0;
 
-        // ====================== 核心优化 ======================
-        const PLAYER_RADIUS = 22;        // 稍微缩小
-        const PLAYER_SAFE_MARGIN = 4;   // 碰撞容错：向内缩，更易穿过
-        const PLAYER_X = CANVAS_WIDTH / 4 + 8; // 右移一点，不贴左
-        // ======================================================
+        const PLAYER_RADIUS = 22;
+        const PLAYER_SAFE_MARGIN = 4;
+        const PLAYER_X = CANVAS_WIDTH / 4 + 8;
 
         const scoreBoard = document.getElementById('score-board');
         const levelInfo = document.getElementById('level-info');
@@ -282,14 +281,11 @@
             });
         }
 
-        // ====================== 碰撞逻辑大幅优化 ======================
         function checkCollision() {
             for (const p of pipes) {
-                // 水平范围
                 if (PLAYER_X + PLAYER_RADIUS - PLAYER_SAFE_MARGIN > p.x &&
                     PLAYER_X - PLAYER_RADIUS + PLAYER_SAFE_MARGIN < p.x + 50) {
 
-                    // 垂直碰撞（加容错）
                     const hitTop = playerY - PLAYER_RADIUS + PLAYER_SAFE_MARGIN < p.topHeight;
                     const hitBottom = playerY + PLAYER_RADIUS - PLAYER_SAFE_MARGIN > p.bottomY;
 
@@ -298,7 +294,6 @@
                         return;
                     }
 
-                    // 计分
                     if (p.x + 50 < PLAYER_X && !p.scored) {
                         score++;
                         p.scored = true;
@@ -307,7 +302,6 @@
                 }
             }
         }
-        // ==============================================================
 
         function gameOver() {
             isGameRunning = false;
