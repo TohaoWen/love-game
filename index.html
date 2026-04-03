@@ -1,175 +1,367 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>逻辑推演</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box;}
-body{
-background:#f4f4f4;
-display:flex;
-flex-direction:column;
-align-items:center;
-justify-content:center;
-min-height:100vh;
-font-family:system-ui, sans-serif;
-user-select:none;
-color:#333;
-}
-#info{
-margin-bottom:10px;
-font-size:16px;
-color:#555;
-}
-#game{
-display:grid;
-gap:2px;
-background:#ccc;
-padding:2px;
-border-radius:4px;
-}
-.cell{
-width:36px;
-height:36px;
-display:flex;
-align-items:center;
-justify-content:center;
-font-size:20px;
-background:#fff;
-border-radius:2px;
-}
-.wall{ background:#666; }
-.floor{ background:#fff; }
-.target{ background:#d0e0ff; }
-.box{ background:#ffb74d; }
-.player{ background:#42a5f5; }
-#reset{
-margin-top:12px;
-padding:8px 16px;
-border:none;
-background:#ddd;
-border-radius:6px;
-font-size:14px;
-}
-</style>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>❤️ 跳跃的爱心 ❤️</title>
+    <style>
+        body {
+            margin: 0; padding: 0;
+            overflow: hidden;
+            background-color: #fce4ec;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: 'Arial', sans-serif;
+            user-select: none;
+            touch-action: none;
+        }
+
+        #gameCanvas {
+            border: 5px solid #ff80ab;
+            border-radius: 10px;
+            background-color: #fff0f5;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            touch-action: none;
+        }
+
+        #score-board {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 48px;
+            font-weight: bold;
+            color: #ff3366;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            z-index: 10;
+        }
+
+        #level-info {
+            position: absolute;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 20px;
+            color: #4b0082;
+            font-weight: bold;
+            z-index: 10;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
+            background: rgba(255, 255, 255, 0.8);
+        }
+        
+        .message-box {
+            background: #fff;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 0 50px rgba(255, 105, 180, 0.8);
+            border: 4px solid #ff69b4;
+            max-width: 320px;
+        }
+        
+        h1 { color: #ff3366; margin-bottom: 15px; font-size: 28px; }
+        p { color: #666; font-size: 16px; line-height: 1.5; }
+
+        .difficulty-list {
+            margin: 20px 0;
+        }
+
+        .diff-btn {
+            background: linear-gradient(45deg, #ff6b81, #ff4757);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 50px;
+            margin: 6px;
+            cursor: pointer;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #ff6b81, #ff4757);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 18px;
+            border-radius: 50px;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+
+        .hidden { display: none !important; }
+    </style>
 </head>
 <body>
-<div id="info">步数：<span id="steps">0</span></div>
-<div id="game"></div>
-<button id="reset">重新开始</button>
 
-<script>
-const gameEl = document.getElementById('game');
-const stepsEl = document.getElementById('steps');
-const resetBtn = document.getElementById('reset');
+    <div id="score-board">0</div>
+    <div id="level-info">关卡：1 简单 | 目标：10分</div>
+    <canvas id="gameCanvas"></canvas>
 
-// 地图：#墙 @人 $箱子 .目标 *箱子在目标 +人在目标
-const level = [
-  '#####',
-  '#@  #',
-  '# $ #',
-  '#  .#',
-  '#####'
-];
+    <!-- 难度选择 -->
+    <div id="difficulty-overlay" class="overlay">
+        <div class="message-box">
+            <h1>❤️ 跳跃的爱心 ❤️</h1>
+            <p>选择难度开始闯关</p>
+            <div class="difficulty-list">
+                <button class="diff-btn" onclick="selectLevel(1)">关卡1 简单</button>
+                <button class="diff-btn" onclick="selectLevel(2)">关卡2 普通</button>
+                <button class="diff-btn" onclick="selectLevel(3)">关卡3 困难</button>
+                <button class="diff-btn" onclick="selectLevel(4)">关卡4 地狱</button>
+            </div>
+            <p>每关达到目标分即可解锁下一难度</p>
+        </div>
+    </div>
 
-let map = [];
-let playerX = 0, playerY = 0;
-let steps = 0;
+    <!-- 游戏结束 -->
+    <div id="gameover-overlay" class="overlay hidden">
+        <div class="message-box">
+            <h1>💔 挑战失败</h1>
+            <p>你的分数：<span id="final-score">0</span></p>
+            <p id="target-tip"></p>
+            <p id="high-score-msg" style="color:#4b0082;"></p>
+            <button class="btn" onclick="backToDifficulty()">返回选择</button>
+            <button class="btn" onclick="restartCurrentLevel()">重试本关</button>
+        </div>
+    </div>
 
-function init(){
-  map = level.map(row=>[...row]);
-  steps = 0;
-  stepsEl.textContent = steps;
-  // 找玩家位置
-  for(let y=0;y<map.length;y++){
-    for(let x=0;x<map[y].length;x++){
-      if(map[y][x]=='@' || map[y][x]=='+'){
-        playerX = x; playerY = y;
-      }
-    }
-  }
-  render();
-}
+    <!-- 通关 -->
+    <div id="pass-overlay" class="overlay hidden">
+        <div class="message-box">
+            <h1>🎉 恭喜通关！</h1>
+            <p>当前分数：<span id="pass-score">0</span></p>
+            <p id="next-level-tip"></p>
+            <button class="btn" onclick="goNextLevel()">进入下一关卡</button>
+            <button class="btn" onclick="backToDifficulty()">返回选择</button>
+        </div>
+    </div>
 
-function render(){
-  gameEl.innerHTML = '';
-  gameEl.style.gridTemplateColumns = `repeat(${map[0].length}, 36px)`;
-  for(let row of map){
-    for(let c of row){
-      const div = document.createElement('div');
-      div.className = 'cell';
-      if(c=='#') div.classList.add('wall');
-      else if(c=='.' || c=='+') div.classList.add('target');
-      else if(c=='$' || c=='*') div.classList.add('box');
-      else if(c=='@' || c=='+') div.classList.add('player');
-      else div.classList.add('floor');
-      gameEl.appendChild(div);
-    }
-  }
-}
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
 
-function move(dx, dy){
-  const nx = playerX + dx;
-  const ny = playerY + dy;
-  // 撞墙
-  if(map[ny][nx]=='#') return;
-  // 推箱子
-  if(map[ny][nx]=='$' || map[ny][nx]=='*'){
-    const nnx = nx + dx;
-    const nny = ny + dy;
-    if(map[nny][nnx]=='#' || map[nny][nnx]=='$' || map[nny][nnx]=='*') return;
-    // 移动箱子
-    map[ny][nx] = map[ny][nx]=='*' ? '.' : ' ';
-    map[nny][nnx] = map[nny][nnx]=='.' ? '*' : '$';
-  }
-  // 移动玩家
-  map[playerY][playerX] = map[playerY][playerX]=='+' ? '.' : ' ';
-  playerX = nx; playerY = ny;
-  map[ny][nx] = map[ny][nx]=='.' ? '+' : '@';
-  steps++;
-  stepsEl.textContent = steps;
-  render();
-  checkWin();
-}
+        const CANVAS_WIDTH = Math.min(window.innerWidth * 0.9, 400);
+        const CANVAS_HEIGHT = CANVAS_WIDTH * 1.5;
+        canvas.width = CANVAS_WIDTH;
+        canvas.height = CANVAS_HEIGHT;
 
-function checkWin(){
-  for(let row of map){
-    for(let c of row){
-      if(c=='$') return;
-    }
-  }
-  setTimeout(()=>alert(`恭喜通关！\n步数：${steps}`), 100);
-}
+        // 难度配置：重力、跳力、速度、间距、生成间隔、目标分
+        const levelConfig = [
+            {}, // 0占位
+            { gravity:0.5, jump:-12, speed:2, gap:180, spawn:130, target:10, name:"简单" },   //1
+            { gravity:0.7, jump:-12, speed:3, gap:160, spawn:110, target:20, name:"普通" },   //2
+            { gravity:0.9, jump:-11, speed:4, gap:140, spawn:90,  target:35, name:"困难" },   //3
+            { gravity:1.1, jump:-10, speed:5, gap:120, spawn:75,  target:50, name:"地狱" }   //4
+        ];
 
-// 触摸滑动
-let startX = 0, startY = 0;
-document.addEventListener('touchstart', e=>{
-  startX = e.touches[0].clientX;
-  startY = e.touches[0].clientY;
-});
-document.addEventListener('touchend', e=>{
-  const dx = e.changedTouches[0].clientX - startX;
-  const dy = e.changedTouches[0].clientY - startY;
-  if(Math.abs(dx) > Math.abs(dy)){
-    if(dx>30) move(1,0);
-    else if(dx<-30) move(-1,0);
-  }else{
-    if(dy>30) move(0,1);
-    else if(dy<-30) move(0,-1);
-  }
-});
+        // 游戏状态
+        let currentLevel = 1;
+        let playerY = CANVAS_HEIGHT / 2;
+        let playerVelocity = 0;
+        let pipes = [];
+        let score = 0;
+        let highScore = localStorage.getItem('heartHighScore') || 0;
+        let isGameRunning = false;
+        let frameCount = 0;
 
-// 电脑方向键
-window.addEventListener('keydown', e=>{
-  if(e.key=='ArrowLeft') move(-1,0);
-  if(e.key=='ArrowRight') move(1,0);
-  if(e.key=='ArrowUp') move(0,-1);
-  if(e.key=='ArrowDown') move(0,1);
-});
+        // DOM
+        const scoreBoard = document.getElementById('score-board');
+        const levelInfo = document.getElementById('level-info');
+        const difficultyOverlay = document.getElementById('difficulty-overlay');
+        const gameoverOverlay = document.getElementById('gameover-overlay');
+        const passOverlay = document.getElementById('pass-overlay');
 
-resetBtn.addEventListener('click', init);
-init();
-</script>
+        // 选择关卡
+        function selectLevel(level) {
+            currentLevel = level;
+            startGame();
+        }
+
+        // 开始当前关卡
+        function startGame() {
+            const cfg = levelConfig[currentLevel];
+
+            playerY = CANVAS_HEIGHT / 2;
+            playerVelocity = 0;
+            pipes = [];
+            score = 0;
+            frameCount = 0;
+            isGameRunning = true;
+
+            scoreBoard.textContent = 0;
+            updateLevelInfo();
+
+            difficultyOverlay.classList.add('hidden');
+            gameoverOverlay.classList.add('hidden');
+            passOverlay.classList.add('hidden');
+
+            gameLoop();
+        }
+
+        function updateLevelInfo() {
+            const cfg = levelConfig[currentLevel];
+            levelInfo.textContent = `关卡${currentLevel} ${cfg.name} | 目标：${cfg.target}分`;
+        }
+
+        // 主循环
+        function gameLoop() {
+            if (!isGameRunning) return;
+            ctx.clearRect(0,0,CANVAS_WIDTH,CANVAS_HEIGHT);
+
+            updatePlayer();
+            updatePipes();
+            drawPipes();
+            drawPlayer();
+            checkCollision();
+
+            // 检查通关
+            const cfg = levelConfig[currentLevel];
+            if (score >= cfg.target) {
+                passLevel();
+                return;
+            }
+
+            frameCount++;
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 玩家
+        function drawPlayer() {
+            ctx.fillStyle = '#ff3366';
+            ctx.beginPath();
+            ctx.arc(CANVAS_WIDTH / 4, playerY, 25, 0, Math.PI*2);
+            ctx.fill();
+        }
+
+        function updatePlayer() {
+            const cfg = levelConfig[currentLevel];
+            playerVelocity += cfg.gravity;
+            playerY += playerVelocity;
+
+            if (playerY+25 > CANVAS_HEIGHT || playerY-25 < 0) gameOver();
+        }
+
+        function jump() {
+            if (isGameRunning) {
+                const cfg = levelConfig[currentLevel];
+                playerVelocity = cfg.jump;
+            }
+        }
+
+        // 管道
+        function spawnPipe() {
+            const cfg = levelConfig[currentLevel];
+            const min = 50;
+            const max = CANVAS_HEIGHT - cfg.gap - min;
+            const h = Math.random()*(max-min)+min;
+
+            pipes.push({
+                x: CANVAS_WIDTH,
+                topHeight: h,
+                bottomY: h + cfg.gap,
+                scored: false
+            });
+        }
+
+        function updatePipes() {
+            const cfg = levelConfig[currentLevel];
+            pipes.forEach(p=> p.x -= cfg.speed);
+            pipes = pipes.filter(p=> p.x > -50);
+            if (frameCount % cfg.spawn === 0) spawnPipe();
+        }
+
+        function drawPipes() {
+            ctx.fillStyle = '#4b0082';
+            pipes.forEach(p=>{
+                ctx.fillRect(p.x,0,50,p.topHeight);
+                ctx.fillRect(p.x,p.bottomY,50,CANVAS_HEIGHT-p.bottomY);
+            });
+        }
+
+        // 碰撞与得分
+        function checkCollision() {
+            const px = CANVAS_WIDTH / 4;
+            for (const p of pipes) {
+                if (px+25 > p.x && px-25 < p.x+50) {
+                    if (playerY-25 < p.topHeight || playerY+25 > p.bottomY) {
+                        gameOver();
+                        return;
+                    }
+                    if (p.x+50 < px && !p.scored) {
+                        score++;
+                        p.scored = true;
+                        scoreBoard.textContent = score;
+                    }
+                }
+            }
+        }
+
+        // 游戏结束
+        function gameOver() {
+            isGameRunning = false;
+            document.getElementById('final-score').textContent = score;
+            const cfg = levelConfig[currentLevel];
+            document.getElementById('target-tip').textContent = `本关目标：${cfg.target}分`;
+
+            if (score>highScore) {
+                highScore=score;
+                localStorage.setItem('heartHighScore',highScore);
+                document.getElementById('high-score-msg').textContent="新高分！";
+            } else {
+                document.getElementById('high-score-msg').textContent=`最高分：${highScore}`;
+            }
+
+            gameoverOverlay.classList.remove('hidden');
+        }
+
+        // 通关
+        function passLevel() {
+            isGameRunning = false;
+            document.getElementById('pass-score').textContent = score;
+
+            if (currentLevel >=4) {
+                document.getElementById('next-level-tip').textContent="🎉 你已通关全部关卡！";
+            } else {
+                document.getElementById('next-level-tip').textContent=`即将解锁 关卡${currentLevel+1}`;
+            }
+
+            passOverlay.classList.remove('hidden');
+        }
+
+        // 按钮
+        function restartCurrentLevel() {
+            startGame();
+        }
+
+        function backToDifficulty() {
+            gameoverOverlay.classList.add('hidden');
+            passOverlay.classList.add('hidden');
+            difficultyOverlay.classList.remove('hidden');
+        }
+
+        function goNextLevel() {
+            if (currentLevel <4) {
+                currentLevel++;
+                startGame();
+            } else {
+                backToDifficulty();
+            }
+        }
+
+        // 事件
+        canvas.addEventListener('click', jump);
+        canvas.addEventListener('touchstart', e=>{e.preventDefault(); jump()});
+    </script>
 </body>
 </html>
